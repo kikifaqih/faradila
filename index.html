@@ -9,119 +9,130 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <style>
+<style>
+    :root {
+        --bg-dark: #0f172a;
+        --card-dark: #1e293b;
+        --neon-blue: #38bdf8;
+        --neon-green: #4ade80;
+        --neon-red: #fb7185;
+    }
+
     body {
         font-family: 'Inter', sans-serif;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        color: #1e293b;
+        background-color: var(--bg-dark);
+        color: #f1f5f9;
         min-height: 100vh;
+        background-image: radial-gradient(circle at top right, #1e293b, #0f172a);
     }
-    .glass-card {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(10px);
-        border-radius: 28px;
-        border: 1px solid rgba(255, 255, 255, 0.7);
-        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+
+    .neo-card {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
     }
-    .status-badge {
-        padding: 6px 14px;
-        border-radius: 12px;
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.025em;
+
+    .stat-value {
+        text-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
     }
-    /* Animasi denyut untuk indikator aktif */
-    .pulse-blue {
-        animation: pulse-animation 2s infinite;
+
+    .nav-glass {
+        background: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
-    @keyframes pulse-animation {
-        0% { box-shadow: 0 0 0 0px rgba(37, 99, 235, 0.2); }
-        100% { box-shadow: 0 0 0 15px rgba(37, 99, 235, 0); }
+
+    /* Animasi Bar Suhu */
+    #tempBar {
+        box-shadow: 0 0 10px var(--neon-blue);
+        transition: height 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Custom Scrollbar untuk Log */
+    #logContainer::-webkit-scrollbar {
+        width: 4px;
+    }
+    #logContainer::-webkit-scrollbar-thumb {
+        background: var(--neon-blue);
+        border-radius: 10px;
     }
 </style>
 </head>
 <body class="pb-28">
 
-    <header class="p-8 flex justify-between items-center">
-        <div>
-            <h1 class="text-2xl font-800 text-slate-900 tracking-tight">Bio<span class="text-blue-600">Pulse</span></h1>
-            <p class="text-slate-400 text-[10px] font-semibold uppercase tracking-widest">Clinical Monitoring V1.0</p>
+  <header class="p-8 flex justify-between items-center">
+    <div>
+        <h1 class="text-2xl font-800 tracking-tighter text-white">BIO<span class="text-sky-400">PULSE</span></h1>
+        <div class="flex items-center gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+            <p class="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">System Live</p>
         </div>
-        <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-        </div>
-    </header>
+    </div>
+    <div class="p-2 neo-card">
+        <svg xmlns="http://www.w3.org/2000/svg" class="text-sky-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    </div>
+</header>
 
-<main class="px-6 space-y-8 pt-2">
+<main class="px-6 space-y-6">
     <div id="page-dashboard" class="space-y-6">
-        <div class="grid grid-cols-1 gap-6">
-            <section class="glass-card p-8 relative overflow-hidden">
-                <div class="relative z-10">
-                    <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Internal Temperature</p>
-                    <div class="flex items-baseline gap-2">
-                        <h2 id="tempMobile" class="text-6xl font-extrabold text-slate-900 tracking-tighter">--</h2>
-                        <span class="text-2xl font-bold text-blue-500">°C</span>
-                    </div>
-                    <div class="mt-4 flex items-center gap-3">
-                        <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div id="tempBar" class="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-1000" style="width: 0%"></div>
-                        </div>
-                        <span class="text-[10px] font-bold text-slate-400">NORMAL</span>
-                    </div>
-                </div>
-                <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full blur-3xl opacity-50"></div>
-            </section>
-        </div>
-
-        <section class="grid grid-cols-2 gap-4">
-            <div class="glass-card p-6 flex flex-col justify-between min-h-[140px]">
-                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">GSR State</p>
-                <div>
-                    <h3 id="stressMobile" class="text-xl font-800 text-slate-800 mb-2">Ready</h3>
-                    <div id="statusTag" class="status-badge bg-slate-100 text-slate-400 inline-block">Standby</div>
+        <section class="neo-card p-8 flex justify-between items-end relative overflow-hidden">
+            <div class="relative z-10">
+                <p class="text-sky-400/50 text-[10px] font-bold uppercase tracking-widest mb-1">Body Temperature</p>
+                <div class="flex items-baseline gap-1">
+                    <span id="tempMobile" class="text-7xl font-black tracking-tighter stat-value">--</span>
+                    <span class="text-xl font-bold text-slate-500">°C</span>
                 </div>
             </div>
-            <div class="glass-card p-6 flex flex-col justify-between min-h-[140px]">
-                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Conductance</p>
-                <div>
-                    <div class="text-3xl font-black text-blue-600 mb-1" id="gsrRawText">--</div>
-                    <p class="text-[9px] text-slate-400 font-bold uppercase">μSiemens (Raw)</p>
-                </div>
+            <div class="w-12 h-24 bg-slate-900/50 rounded-2xl p-1 border border-white/5 relative">
+                <div id="tempBar" class="absolute bottom-1 left-1 right-1 bg-gradient-to-t from-sky-600 to-sky-400 rounded-xl" style="height: 0%"></div>
             </div>
         </section>
 
-        <section class="glass-card p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-slate-900 font-800 text-sm uppercase tracking-wider">Live Analysis</h3>
-                <div class="w-2 h-2 rounded-full bg-red-500 pulse-blue"></div>
-            </div>
-            <canvas id="mobileChart" height="160"></canvas>
+        <div class="grid grid-cols-2 gap-4">
+            <section class="neo-card p-5 border-l-4 border-l-sky-400">
+                <p class="text-slate-500 text-[9px] font-bold uppercase mb-2">Condition</p>
+                <h3 id="stressMobile" class="text-lg font-bold text-white leading-tight">Analyzing...</h3>
+                <span id="statusTag" class="text-[9px] font-black text-sky-400 uppercase mt-1 inline-block">Standby</span>
+            </section>
+            
+            <section class="neo-card p-5">
+                <p class="text-slate-500 text-[9px] font-bold uppercase mb-2">Conductance</p>
+                <div id="gsrRawText" class="text-2xl font-mono font-bold text-white">--</div>
+                <div class="w-full h-1 bg-slate-800 mt-2 rounded-full overflow-hidden">
+                    <div id="gsrProgress" class="h-full bg-sky-400 transition-all duration-500" style="width: 50%"></div>
+                </div>
+            </section>
+        </div>
+
+        <section class="neo-card p-6">
+            <h3 class="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-4 text-center">Neural Signal Stream</h3>
+            <canvas id="mobileChart" height="150"></canvas>
         </section>
     </div>
 
     <div id="page-history" class="hidden space-y-6">
-        <div class="px-2">
-            <h3 class="text-2xl font-black text-slate-900">Activity</h3>
-            <p class="text-slate-400 text-xs font-medium">Recent physiological changes</p>
-        </div>
-        <div id="logContainer" class="space-y-3">
+        <h3 class="text-xl font-black px-2">ACTIVITY LOG</h3>
+        <div id="logContainer" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
             </div>
     </div>
 </main>
 
-<nav class="fixed bottom-6 left-6 right-6 h-20 glass-card flex items-center justify-around px-4 z-50 border border-white/50 shadow-2xl">
-    <button id="btn-home" class="p-4 text-blue-600 transition-all duration-300 transform active:scale-90">
-        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+
+<nav class="fixed bottom-0 left-0 right-0 h-24 nav-glass flex items-center justify-around px-10 z-50">
+    <button id="btn-home" class="flex flex-col items-center gap-1 text-sky-400">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span class="text-[8px] font-bold uppercase tracking-tighter">Dash</span>
     </button>
     
-    <button id="btn-history" class="p-4 text-slate-300 transition-all duration-300 transform active:scale-90">
-        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"></path></svg>
+    <button id="btn-history" class="flex flex-col items-center gap-1 text-slate-500">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+        <span class="text-[8px] font-bold uppercase tracking-tighter">Stats</span>
     </button>
 
-    <div class="w-[1px] h-8 bg-slate-200"></div>
-
-    <button class="p-4 text-slate-300 active:rotate-180 transition-all duration-500" onclick="location.reload()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+    <button onclick="location.reload()" class="w-12 h-12 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-400 border border-sky-400/20 active:rotate-180 transition-all">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
     </button>
 </nav>
 
