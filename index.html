@@ -125,8 +125,10 @@
         <div class="bento-card p-6 border-l-4 border-purple-500">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="font-bold text-xs uppercase tracking-widest text-slate-400">Hardware Status</h3>
-                <span
-                    class="px-3 py-1 bg-green-500/10 text-green-400 text-[10px] font-bold rounded-full">CONNECTED</span>
+                <span id="wifi-badge"
+                    class="px-3 py-1 bg-slate-500/10 text-slate-400 text-[10px] font-bold rounded-full">
+                    CHECKING...
+                </span>
             </div>
             <div class="space-y-4">
                 <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl">
@@ -353,14 +355,12 @@
             const dot = btn.querySelector('div');
 
             if (oledState) {
-                btn.className = "w-12 h-6 bg-sky-500 rounded-full relative transition-all";
-                dot.style.right = "4px";
-                dot.style.left = "auto";
+                btn.classList.replace('bg-slate-700', 'bg-sky-500');
+                dot.style.transform = "translateX(24px)"; // Geser ke kanan
                 database.ref('control').update({ oled: 1 });
             } else {
-                btn.className = "w-12 h-6 bg-slate-700 rounded-full relative transition-all";
-                dot.style.left = "4px";
-                dot.style.right = "auto";
+                btn.classList.replace('bg-sky-500', 'bg-slate-700');
+                dot.style.transform = "translateX(0px)"; // Geser ke kiri
                 database.ref('control').update({ oled: 0 });
             }
         }
