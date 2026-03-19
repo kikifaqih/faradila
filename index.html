@@ -107,6 +107,7 @@
         let lastStatus = "";
         let lastBeat = Date.now();
         let myChart;
+        let updatePending = false;
 
         // INISIALISASI
         window.onload = () => {
@@ -118,17 +119,27 @@
                 const now = new Date();
                 document.getElementById('clock').innerText = now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
                 
-                // Cek koneksi (8 detik tanpa data = offline)
-                if(Date.now() - lastBeat > 8000) setOnline(false);
+                // Cek koneksi (5 detik tanpa data = offline untuk responsivitas tinggi)
+                if(Date.now() - lastBeat > 5000) setOnline(false);
             }, 1000);
 
-            // Pantau Firebase - PRIORITAS TINGGI
+            // Pantau Firebase dengan Sinkronisasi Instan
+            // Menggunakan listener 'value' pada level monitoring untuk update tercepat
             db.ref('monitoring').on('value', snap => {
                 const d = snap.val();
                 if(!d) return;
+                
                 lastBeat = Date.now();
                 setOnline(true);
-                updateDashboard(d.gsr, d.suhu);
+                
+                // Gunakan requestAnimationFrame untuk sinkronisasi rendering browser
+                if (!updatePending) {
+                    updatePending = true;
+                    requestAnimationFrame(() => {
+                        updateDashboard(d.gsr, d.suhu);
+                        updatePending = false;
+                    });
+                }
             });
         };
 
@@ -139,7 +150,7 @@
         }
 
         function updateDashboard(gsr, temp) {
-            // Update Statistik
+            // Update Statistik Instan
             document.getElementById('t-val').innerText = parseFloat(temp).toFixed(1);
             document.getElementById('g-raw').innerText = gsr;
 
@@ -167,20 +178,22 @@
 
             // Update Visual Dashboard
             const sVal = document.getElementById('s-val');
-            sVal.innerText = status;
-            sVal.className = `text-lg font-black italic uppercase ${color}`;
-            document.getElementById('stress-card').style.borderLeftColor = border === "border-transparent" ? "transparent" : (status === "RELAXED" ? "#10b981" : "#ef4444");
-            
-            document.getElementById('i-emo').innerText = emo;
-            document.getElementById('i-title').innerText = tit;
-            document.getElementById('i-desc').innerText = desc;
+            if (sVal.innerText !== status) {
+                sVal.innerText = status;
+                sVal.className = `text-lg font-black italic uppercase ${color}`;
+                document.getElementById('stress-card').style.borderLeftColor = border === "border-transparent" ? "transparent" : (status === "RELAXED" ? "#10b981" : "#ef4444");
+                
+                document.getElementById('i-emo').innerText = emo;
+                document.getElementById('i-title').innerText = tit;
+                document.getElementById('i-desc').innerText = desc;
+            }
 
-            // Update Grafik (Tanpa Animasi agar Cepat)
+            // Update Grafik (Tanpa Animasi & Mode Performa Tinggi)
             myChart.data.datasets[0].data.push(gsr);
             myChart.data.datasets[0].data.shift();
-            myChart.update('none');
+            myChart.update('none'); 
 
-            // Simpan Log jika status berubah (Throttling)
+            // Simpan Log jika status berubah
             if(status !== lastStatus && status !== "DISCONNECTED") {
                 saveLog(status, gsr, temp);
                 lastStatus = status;
@@ -188,9 +201,9 @@
         }
 
         function saveLog(st, g, t) {
-            const time = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+            const time = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
             logs.unshift({ time, st, g, t });
-            if(logs.length > 30) logs.pop(); // Batasi 30 log terbaru
+            if(logs.length > 50) logs.pop(); // Perbanyak batas log
             localStorage.setItem('bp_logs', JSON.stringify(logs));
             renderLogs();
         }
@@ -202,7 +215,7 @@
                 return;
             }
             list.innerHTML = logs.map(l => `
-                <div class="bg-white/5 p-3 rounded-xl flex justify-between items-center border-l-2 ${l.st === 'RELAXED' ? 'border-emerald-500' : 'border-red-500'}">
+                <div class="bg-white/5 p-3 rounded-xl flex justify-between items-center border-l-2 ${l.st === 'RELAXED' ? 'border-emerald-500' : 'border-red-500'} animate-in fade-in slide-in-from-top-1 duration-300">
                     <div>
                         <p class="text-[9px] font-black ${l.st === 'RELAXED' ? 'text-emerald-400' : 'text-red-500'} uppercase">${l.st}</p>
                         <p class="text-[8px] text-slate-500 font-bold">${l.time}</p>
@@ -228,13 +241,13 @@
             myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: Array(30).fill(''),
+                    labels: Array(40).fill(''), // Perbanyak titik data untuk waveform lebih halus
                     datasets: [{
-                        data: Array(30).fill(null),
+                        data: Array(40).fill(null),
                         borderColor: '#38bdf8',
-                        borderWidth: 2,
+                        borderWidth: 1.5,
                         pointRadius: 0,
-                        tension: 0.3,
+                        tension: 0.4, // Lebih smooth
                         fill: true,
                         backgroundColor: 'rgba(56, 189, 248, 0.05)'
                     }]
@@ -243,7 +256,11 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     animation: false, 
-                    scales: { y: { display:false, min:0, max:1023 }, x: { display:false } },
+                    elements: { line: { capBezierPoints: false } },
+                    scales: { 
+                        y: { display:false, min:200, max:1000 }, // Fokus pada range GSR aktif
+                        x: { display:false } 
+                    },
                     plugins: { legend: { display:false } }
                 }
             });
