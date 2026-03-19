@@ -50,8 +50,8 @@
     <header class="p-8 pb-4">
         <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1" id="header-subtitle">Health Monitor
         </p>
-        <h1 class="text-3xl font-extrabold tracking-tight">Deteksi<span class="gradient-text"
-                id="tab-title">Stress</span></h1>
+        <h1 class="text-3xl font-extrabold tracking-tight">BioPulse <span class="gradient-text"
+                id="tab-title">Bento</span></h1>
     </header>
 
     <main id="content-dashboard" class="px-6 grid grid-cols-6 gap-4">
@@ -192,16 +192,22 @@
         let oledState = true;
 
         // Pantau status WiFi dari Firebase
+        // Pantau status WiFi dari Firebase dengan log untuk debugging
         database.ref('status/wifi').on('value', (snapshot) => {
             const rssi = snapshot.val();
-            const badge = document.getElementById('wifi-badge'); // Pastikan ID ini ada di HTML
-            if (rssi) {
+            const badge = document.getElementById('wifi-badge');
+
+            console.log("Data WiFi diterima:", rssi); // Lihat di Inspect -> Console
+
+            if (rssi !== null) {
                 badge.innerText = "ONLINE (" + rssi + " dBm)";
                 badge.className = "px-3 py-1 bg-green-500/10 text-green-400 text-[10px] font-bold rounded-full";
             } else {
                 badge.innerText = "OFFLINE";
                 badge.className = "px-3 py-1 bg-red-500/10 text-red-400 text-[10px] font-bold rounded-full";
             }
+        }, (error) => {
+            console.error("Gagal baca Firebase:", error);
         });
         // --- NAVIGATION LOGIC ---
         function switchTab(tabId) {
