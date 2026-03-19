@@ -3,500 +3,257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BioPulse Pro | Dashboard</title>
-    <!-- Framework & Fonts -->
+    <title>BioPulse Pro | Ultra Fast</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root {
-            --bg-main: #000000;
-            --card-bg: #151517;
-            --accent: #38bdf8;
-            --text-dim: #94a3b8;
-        }
-
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: var(--bg-main);
-            color: #ffffff;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* Bento Grid Styles */
-        .bento-card {
-            background: var(--card-bg);
-            border-radius: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow: hidden;
-            position: relative;
-        }
-
-        .bento-card:active {
-            transform: scale(0.98);
-            background: #1c1c1e;
-        }
-
-        .gradient-text {
-            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        /* Status Animations */
-        @keyframes pulse-soft {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 6px;
-        }
-
-        .status-online { background: #10b981; box-shadow: 0 0 12px #10b981; }
-        .status-offline { background: #ef4444; }
-
-        /* Navigation */
-        .nav-blur {
-            background: rgba(21, 21, 23, 0.8);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .nav-item { color: var(--text-dim); transition: all 0.3s; }
-        .nav-item.active { color: var(--accent); }
-
-        .hidden-tab { display: none !important; }
-
-        /* Custom Scrollbar */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        .log-item {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 18px;
-            margin-bottom: 10px;
-            padding: 14px;
-        }
+        :root { --bg: #000; --card: #121214; --accent: #38bdf8; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: #fff; margin: 0; overflow-x: hidden; }
+        .bento { background: var(--card); border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
+        .nav-active { color: var(--accent) !important; transform: scale(1.1); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .online { background: #10b981; box-shadow: 0 0 10px #10b981; }
+        .offline { background: #ef4444; }
+        .tab-hidden { display: none !important; }
+        canvas { filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.1)); }
     </style>
 </head>
-<body class="pb-32">
+<body class="pb-28">
 
-    <!-- Header Section -->
-    <header class="p-8 pb-4 flex justify-between items-start">
+    <!-- Header Ringkas -->
+    <header class="p-6 flex justify-between items-center">
         <div>
-            <p id="date-now" class="text-slate-500 text-xs font-bold uppercase tracking-[0.2em] mb-1">MEMUAT...</p>
-            <h1 class="text-3xl font-extrabold tracking-tight">BioPulse <span class="gradient-text">Pro</span></h1>
+            <h1 class="text-2xl font-extrabold tracking-tighter">BioPulse <span class="text-sky-400">Pro</span></h1>
+            <p id="clock" class="text-[10px] text-slate-500 font-bold tracking-widest uppercase">MEMUAT...</p>
         </div>
-        <div class="flex flex-col items-end">
-            <div id="device-status" class="flex items-center bg-white/5 px-3 py-1.5 rounded-full">
-                <span class="status-dot status-offline" id="dot-status"></span>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" id="text-status">OFFLINE</span>
-            </div>
+        <div class="bg-white/5 px-3 py-1.5 rounded-full flex items-center">
+            <span id="dot" class="status-dot offline"></span>
+            <span id="state-txt" class="text-[9px] font-black text-slate-400 uppercase">OFFLINE</span>
         </div>
     </header>
 
-    <!-- DASHBOARD CONTENT -->
-    <main id="tab-dashboard" class="px-6 grid grid-cols-6 gap-4">
-        
-        <!-- Metric: Temperature -->
-        <div class="col-span-3 bento-card p-6 flex flex-col justify-between aspect-square">
-            <div class="w-10 h-10 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg>
-            </div>
-            <div>
-                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Temperature</p>
+    <!-- Main Dashboard -->
+    <main id="tab-home" class="px-5 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bento p-5">
+                <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Body Temp</p>
                 <div class="flex items-baseline">
-                    <h2 id="val-temp" class="text-4xl font-bold tracking-tighter">--</h2>
-                    <span class="text-xl font-bold text-slate-600 ml-1">°C</span>
+                    <span id="t-val" class="text-3xl font-bold tracking-tighter">--</span>
+                    <span class="text-sm font-bold text-slate-600 ml-1">°C</span>
                 </div>
+            </div>
+            <div id="stress-card" class="bento p-5 border-l-4 border-transparent transition-all duration-300">
+                <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Stress Level</p>
+                <span id="s-val" class="text-lg font-black italic text-slate-400">WAIT</span>
             </div>
         </div>
 
-        <!-- Metric: Stress Status -->
-        <div id="card-stress" class="col-span-3 bento-card p-6 flex flex-col justify-between aspect-square">
-            <div id="stress-icon-bg" class="w-10 h-10 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M18 10V4"></path><path d="M6 20v-6"></path></svg>
+        <div class="bento p-5">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-[10px] font-black text-slate-500 uppercase">Live GSR Waveform</h3>
+                <span id="g-raw" class="text-[10px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded">000</span>
             </div>
+            <div class="h-40 w-full">
+                <canvas id="chart"></canvas>
+            </div>
+        </div>
+
+        <div class="bento p-4 flex items-center gap-4 bg-gradient-to-r from-sky-500/10 to-transparent">
+            <div class="text-2xl" id="i-emo">💡</div>
             <div>
-                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Stress Level</p>
-                <h2 id="val-stress" class="text-xl font-black uppercase leading-tight italic">WAITING</h2>
-            </div>
-        </div>
-
-        <!-- Metric: Live Graph -->
-        <div class="col-span-6 bento-card p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="font-bold text-xs uppercase tracking-[0.15em] text-slate-400">GSR Live Analytics</h3>
-                <div class="flex items-center gap-2">
-                    <span id="val-gsr-raw" class="text-[10px] bg-white/5 px-3 py-1 rounded-full font-mono text-sky-400">RAW: --</span>
-                </div>
-            </div>
-            <div class="relative h-40">
-                <canvas id="gsrChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Insight Box -->
-        <div id="insight-box" class="col-span-6 bento-card p-5 flex items-center gap-5 border-l-[6px] border-sky-500">
-            <div class="text-3xl" id="insight-emoji">👋</div>
-            <div class="flex-1">
-                <h4 id="insight-title" class="text-sm font-bold mb-0.5">Selamat Datang</h4>
-                <p id="insight-desc" class="text-[11px] text-slate-400 leading-tight">Sistem siap memantau kondisi Anda.</p>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- HISTORY CONTENT -->
-    <main id="tab-history" class="px-6 space-y-4 hidden-tab">
-        <div class="bento-card p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="font-bold text-xs uppercase tracking-widest text-slate-400">Log Aktivitas Terbaru</h3>
-                <button onclick="clearLogs()" class="text-[10px] text-red-400 font-bold uppercase">Hapus</button>
-            </div>
-            <div id="log-container" class="space-y-1 max-h-[60vh] overflow-y-auto no-scrollbar">
-                <!-- Logs injected here -->
-                <p class="text-center py-10 text-slate-600 text-xs">Belum ada aktivitas tercatat.</p>
-            </div>
-        </div>
-        <button onclick="exportLogs()" class="w-full bento-card p-5 text-sky-400 font-bold flex justify-center items-center gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            EKSPOR DATA (.CSV)
-        </button>
-    </main>
-
-    <!-- SETTINGS / DEVICE CONTENT -->
-    <main id="tab-device" class="px-6 space-y-4 hidden-tab">
-        <div class="bento-card p-6">
-            <h3 class="font-bold text-xs uppercase tracking-widest text-slate-400 mb-6">Kontrol Perangkat</h3>
-            <div class="space-y-4">
-                <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl">
-                    <div>
-                        <p class="text-sm font-bold">OLED Slide QR</p>
-                        <p class="text-[10px] text-slate-500">Ganti tampilan layar di alat</p>
-                    </div>
-                    <button id="btn-slide" onclick="sendCommand('oled_slide')" class="px-5 py-2.5 bg-sky-500 text-[10px] font-black rounded-xl active:scale-95 transition-all">KIRIM</button>
-                </div>
-                <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl">
-                    <div>
-                        <p class="text-sm font-bold">Kalibrasi GSR</p>
-                        <p class="text-[10px] text-slate-500">Reset baseline sensor (5 detik)</p>
-                    </div>
-                    <button id="btn-cal" onclick="sendCommand('calibrate')" class="px-5 py-2.5 bg-white/10 text-[10px] font-black rounded-xl active:scale-95 transition-all">MULAI</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="bento-card p-6 border-t-4 border-sky-500/30">
-            <h3 class="font-bold text-xs uppercase tracking-widest text-slate-400 mb-4">Informasi Alat</h3>
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-white/5 p-4 rounded-2xl">
-                    <p class="text-[9px] text-slate-500 uppercase font-bold">Signal</p>
-                    <p id="info-rssi" class="text-sm font-bold">-- dBm</p>
-                </div>
-                <div class="bg-white/5 p-4 rounded-2xl">
-                    <p class="text-[9px] text-slate-500 uppercase font-bold">Versi</p>
-                    <p class="text-sm font-bold">v2.4.0-Pro</p>
-                </div>
+                <p id="i-title" class="text-[11px] font-bold text-sky-400 uppercase mb-0.5">Sistem Siap</p>
+                <p id="i-desc" class="text-[10px] text-slate-400 leading-tight">Menunggu data sensor dari perangkat...</p>
             </div>
         </div>
     </main>
 
-    <!-- Bottom Navigation -->
-    <nav class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-md h-20 nav-blur rounded-[2.5rem] flex items-center justify-around px-4 shadow-2xl z-50">
-        <button onclick="showTab('dashboard')" id="nav-dashboard" class="nav-item active flex flex-col items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-            <span class="text-[9px] font-bold uppercase tracking-wider">Home</span>
+    <!-- History Tab -->
+    <main id="tab-log" class="px-5 space-y-4 tab-hidden">
+        <div class="bento p-5">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-[10px] font-black text-slate-500 uppercase">Aktivitas Terakhir</h3>
+                <button onclick="clearLogs()" class="text-[9px] font-bold text-red-400">RESET</button>
+            </div>
+            <div id="log-list" class="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                <!-- Log items -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Navigasi -->
+    <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[85%] h-16 bg-zinc-900/90 backdrop-blur-xl rounded-full flex items-center justify-around border border-white/5 shadow-2xl z-50">
+        <button onclick="changeTab('home')" id="nav-home" class="flex flex-col items-center gap-1 nav-active text-slate-500 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span class="text-[8px] font-bold uppercase">Home</span>
         </button>
-        <button onclick="showTab('history')" id="nav-history" class="nav-item flex flex-col items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-            <span class="text-[9px] font-bold uppercase tracking-wider">Log</span>
-        </button>
-        <button onclick="showTab('device')" id="nav-device" class="nav-item flex flex-col items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            <span class="text-[9px] font-bold uppercase tracking-wider">Device</span>
+        <button onclick="changeTab('log')" id="nav-log" class="flex flex-col items-center gap-1 text-slate-500 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            <span class="text-[8px] font-bold uppercase">History</span>
         </button>
     </nav>
 
     <script>
-        // --- CONFIGURASI FIREBASE ---
-        const firebaseConfig = {
-            databaseURL: "https://myshyla-3af28-default-rtdb.firebaseio.com"
-        };
+        // KONFIGURASI FIREBASE
+        const firebaseConfig = { databaseURL: "https://myshyla-3af28-default-rtdb.firebaseio.com" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // --- GLOBAL STATE ---
-        let logs = JSON.parse(localStorage.getItem('biopulse_logs')) || [];
-        let currentStatus = "";
-        let lastUpdate = Date.now();
-        let chart;
+        // STATE APLIKASI
+        let logs = JSON.parse(localStorage.getItem('bp_logs')) || [];
+        let lastStatus = "";
+        let lastBeat = Date.now();
+        let myChart;
 
-        // --- INIT APP ---
+        // INISIALISASI
         window.onload = () => {
             initChart();
-            updateDate();
-            listenFirebase();
             renderLogs();
-            setInterval(checkHeartbeat, 2000);
+            
+            // Interval Cepat untuk Jam & Heartbeat
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('clock').innerText = now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+                
+                // Cek koneksi (8 detik tanpa data = offline)
+                if(Date.now() - lastBeat > 8000) setOnline(false);
+            }, 1000);
+
+            // Pantau Firebase - PRIORITAS TINGGI
+            db.ref('monitoring').on('value', snap => {
+                const d = snap.val();
+                if(!d) return;
+                lastBeat = Date.now();
+                setOnline(true);
+                updateDashboard(d.gsr, d.suhu);
+            });
         };
 
-        function updateDate() {
-            const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
-            const now = new Date();
-            document.getElementById('date-now').innerText = `${days[now.getDay()]}, ${now.getDate()} MEI`;
+        function setOnline(is) {
+            document.getElementById('dot').className = `status-dot ${is ? 'online' : 'offline'}`;
+            document.getElementById('state-txt').innerText = is ? 'ONLINE' : 'OFFLINE';
+            document.getElementById('state-txt').className = `text-[9px] font-black uppercase ${is ? 'text-emerald-400' : 'text-slate-400'}`;
         }
 
-        // --- REALTIME DATABASE LISTENERS ---
-        function listenFirebase() {
-            // Monitor Sensor
-            db.ref('monitoring').on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (!data) return;
+        function updateDashboard(gsr, temp) {
+            // Update Statistik
+            document.getElementById('t-val').innerText = parseFloat(temp).toFixed(1);
+            document.getElementById('g-raw').innerText = gsr;
 
-                lastUpdate = Date.now();
-                updateUI(data.gsr, data.suhu);
-            });
+            // Logika Level Stres
+            let status = "";
+            let color = "text-slate-400";
+            let border = "border-transparent";
+            let emo = "💡", tit = "Sistem Siap", desc = "Menunggu data...";
 
-            // Monitor Koneksi
-            db.ref('status/wifi').on('value', (snapshot) => {
-                const rssi = snapshot.val();
-                if (rssi !== null) {
-                    document.getElementById('info-rssi').innerText = rssi + " dBm";
-                    setOnline(true);
-                }
-            });
-        }
-
-        // --- UI UPDATES ---
-        function updateUI(gsr, temp) {
-            // Update Angka
-            document.getElementById('val-temp').innerText = parseFloat(temp).toFixed(1);
-            document.getElementById('val-gsr-raw').innerText = "RAW: " + gsr;
-
-            // Logika Stress Level
-            const stressText = document.getElementById('val-stress');
-            const stressIcon = document.getElementById('stress-icon-bg');
-            const iEmoji = document.getElementById('insight-emoji');
-            const iTitle = document.getElementById('insight-title');
-            const iDesc = document.getElementById('insight-desc');
-            const iBox = document.getElementById('insight-box');
-
-            let newStatus = "";
-
-            if (gsr > 696) {
-                newStatus = "LEPAS";
-                stressText.innerText = "NO SIGNAL";
-                stressText.className = "text-xl font-black uppercase italic text-slate-600";
-                stressIcon.className = "w-10 h-10 bg-slate-500/10 rounded-2xl flex items-center justify-center text-slate-500";
-                
-                iEmoji.innerText = "🔎";
-                iTitle.innerText = "Sensor Tidak Terdeteksi";
-                iDesc.innerText = "Pastikan jari menempel pada kedua elektroda GSR.";
-                iBox.className = "col-span-6 bento-card p-5 flex items-center gap-5 border-l-[6px] border-slate-700";
-            } 
-            else if (gsr >= 500) {
-                newStatus = "NORMAL";
-                stressText.innerText = "RELAXED";
-                stressText.className = "text-xl font-black uppercase italic text-emerald-400";
-                stressIcon.className = "w-10 h-10 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400";
-                
-                iEmoji.innerText = "🌿";
-                iTitle.innerText = "Kondisi Stabil";
-                iDesc.innerText = "Tingkat stres Anda rendah. Pertahankan ketenangan ini.";
-                iBox.className = "col-span-6 bento-card p-5 flex items-center gap-5 border-l-[6px] border-emerald-500";
-            } 
-            else {
-                newStatus = "STRESS";
-                stressText.innerText = "HIGH STRESS";
-                stressText.className = "text-xl font-black uppercase italic text-red-500";
-                stressIcon.className = "w-10 h-10 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500";
-                
-                iEmoji.innerText = "⚠️";
-                iTitle.innerText = "Stres Terdeteksi";
-                iDesc.innerText = "Cobalah teknik Box Breathing (Tarik 4s, Tahan 4s, Buang 4s).";
-                iBox.className = "col-span-6 bento-card p-5 flex items-center gap-5 border-l-[6px] border-red-500";
-            }
-
-            // Catat Log jika status berubah
-            if (newStatus !== currentStatus && newStatus !== "LEPAS") {
-                addLog(newStatus, gsr, temp);
-                currentStatus = newStatus;
-            }
-
-            // Update Chart
-            updateChart(gsr);
-        }
-
-        function checkHeartbeat() {
-            const diff = Date.now() - lastUpdate;
-            if (diff > 8000) {
-                setOnline(false);
+            if(gsr > 696) {
+                status = "DISCONNECTED";
+                color = "text-slate-500";
+                emo = "🔎"; tit = "Sensor Lepas"; desc = "GSR tidak mendeteksi jari Anda.";
+            } else if(gsr >= 500) {
+                status = "RELAXED";
+                color = "text-emerald-400";
+                border = "border-emerald-500";
+                emo = "🌿"; tit = "Kondisi Tenang"; desc = "Tingkat konduktansi kulit stabil.";
             } else {
-                setOnline(true);
+                status = "STRESSED";
+                color = "text-red-500";
+                border = "border-red-500";
+                emo = "⚠️"; tit = "Stres Tinggi"; desc = "Deteksi lonjakan emosi atau stres.";
             }
-        }
 
-        function setOnline(isOnline) {
-            const dot = document.getElementById('dot-status');
-            const text = document.getElementById('text-status');
-            if (isOnline) {
-                dot.className = "status-dot status-online";
-                text.innerText = "ONLINE";
-                text.classList.add('text-emerald-400');
-            } else {
-                dot.className = "status-dot status-offline";
-                text.innerText = "OFFLINE";
-                text.classList.remove('text-emerald-400');
-            }
-        }
-
-        // --- CHART LOGIC ---
-        function initChart() {
-            const ctx = document.getElementById('gsrChart').getContext('2d');
-            const gradient = ctx.createLinearGradient(0, 0, 0, 150);
-            gradient.addColorStop(0, 'rgba(56, 189, 248, 0.3)');
-            gradient.addColorStop(1, 'rgba(56, 189, 248, 0)');
-
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Array(25).fill(''),
-                    datasets: [{
-                        data: Array(25).fill(null),
-                        borderColor: '#38bdf8',
-                        borderWidth: 3,
-                        pointRadius: 0,
-                        fill: true,
-                        backgroundColor: gradient,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false,
-                    scales: {
-                        y: { display: false, min: 0, max: 1023 },
-                        x: { display: false }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        function updateChart(val) {
-            chart.data.datasets[0].data.push(val);
-            chart.data.datasets[0].data.shift();
-            chart.update('none');
-        }
-
-        // --- LOG SYSTEM ---
-        function addLog(status, gsr, temp) {
-            const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-            const newLog = { time, status, gsr, temp };
-            logs.unshift(newLog);
-            if (logs.length > 50) logs.pop();
+            // Update Visual Dashboard
+            const sVal = document.getElementById('s-val');
+            sVal.innerText = status;
+            sVal.className = `text-lg font-black italic uppercase ${color}`;
+            document.getElementById('stress-card').style.borderLeftColor = border === "border-transparent" ? "transparent" : (status === "RELAXED" ? "#10b981" : "#ef4444");
             
-            localStorage.setItem('biopulse_logs', JSON.stringify(logs));
+            document.getElementById('i-emo').innerText = emo;
+            document.getElementById('i-title').innerText = tit;
+            document.getElementById('i-desc').innerText = desc;
+
+            // Update Grafik (Tanpa Animasi agar Cepat)
+            myChart.data.datasets[0].data.push(gsr);
+            myChart.data.datasets[0].data.shift();
+            myChart.update('none');
+
+            // Simpan Log jika status berubah (Throttling)
+            if(status !== lastStatus && status !== "DISCONNECTED") {
+                saveLog(status, gsr, temp);
+                lastStatus = status;
+            }
+        }
+
+        function saveLog(st, g, t) {
+            const time = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+            logs.unshift({ time, st, g, t });
+            if(logs.length > 30) logs.pop(); // Batasi 30 log terbaru
+            localStorage.setItem('bp_logs', JSON.stringify(logs));
             renderLogs();
         }
 
         function renderLogs() {
-            const container = document.getElementById('log-container');
-            if (logs.length === 0) {
-                container.innerHTML = `<p class="text-center py-10 text-slate-600 text-xs">Belum ada aktivitas tercatat.</p>`;
+            const list = document.getElementById('log-list');
+            if(logs.length === 0) {
+                list.innerHTML = `<p class="text-center py-10 text-slate-600 text-[10px]">Belum ada riwayat.</p>`;
                 return;
             }
-
-            container.innerHTML = logs.map(log => `
-                <div class="log-item flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        <div class="w-2 h-8 ${log.status === 'NORMAL' ? 'bg-emerald-500' : 'bg-red-500'} rounded-full"></div>
-                        <div>
-                            <p class="text-[11px] font-black ${log.status === 'NORMAL' ? 'text-emerald-400' : 'text-red-500'} uppercase">${log.status}</p>
-                            <p class="text-[9px] text-slate-500 font-bold">${log.time}</p>
-                        </div>
+            list.innerHTML = logs.map(l => `
+                <div class="bg-white/5 p-3 rounded-xl flex justify-between items-center border-l-2 ${l.st === 'RELAXED' ? 'border-emerald-500' : 'border-red-500'}">
+                    <div>
+                        <p class="text-[9px] font-black ${l.st === 'RELAXED' ? 'text-emerald-400' : 'text-red-500'} uppercase">${l.st}</p>
+                        <p class="text-[8px] text-slate-500 font-bold">${l.time}</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] font-bold text-white">${log.gsr} <span class="text-slate-600 italic">pts</span></p>
-                        <p class="text-[10px] font-bold text-slate-400">${log.temp}°C</p>
+                        <p class="text-[10px] font-bold">${l.g} <span class="text-slate-600">GSR</span></p>
+                        <p class="text-[10px] font-bold text-slate-400">${l.t}°C</p>
                     </div>
                 </div>
             `).join('');
         }
 
         function clearLogs() {
-            if (confirm("Hapus semua riwayat data?")) {
-                logs = [];
-                localStorage.removeItem('biopulse_logs');
-                renderLogs();
+            if(confirm("Hapus semua riwayat?")) { 
+                logs = []; 
+                localStorage.removeItem('bp_logs'); 
+                renderLogs(); 
             }
         }
 
-        function exportLogs() {
-            let csv = "Waktu,Status,GSR,Suhu\n";
-            logs.forEach(l => {
-                csv += `${l.time},${l.status},${l.gsr},${l.temp}\n`;
+        function initChart() {
+            const ctx = document.getElementById('chart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(30).fill(''),
+                    datasets: [{
+                        data: Array(30).fill(null),
+                        borderColor: '#38bdf8',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.3,
+                        fill: true,
+                        backgroundColor: 'rgba(56, 189, 248, 0.05)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false, 
+                    scales: { y: { display:false, min:0, max:1023 }, x: { display:false } },
+                    plugins: { legend: { display:false } }
+                }
             });
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.setAttribute('hidden', '');
-            a.setAttribute('href', url);
-            a.setAttribute('download', 'biopulse_export.csv');
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
         }
 
-        // --- COMMAND SYSTEM ---
-        function sendCommand(path) {
-            const btn = event.target;
-            const originalText = btn.innerText;
-            
-            btn.innerText = "MENGIRIM...";
-            btn.disabled = true;
-
-            db.ref('control/' + path).set(1)
-                .then(() => {
-                    setTimeout(() => {
-                        btn.innerText = "BERHASIL";
-                        btn.className = btn.className.replace('bg-sky-500', 'bg-emerald-500');
-                        setTimeout(() => {
-                            btn.innerText = originalText;
-                            btn.disabled = false;
-                            btn.className = btn.className.replace('bg-emerald-500', 'bg-sky-500');
-                        }, 1500);
-                    }, 500);
-                })
-                .catch(() => {
-                    btn.innerText = "GAGAL";
-                    btn.className = btn.className.replace('bg-sky-500', 'bg-red-500');
-                    btn.disabled = false;
-                });
-        }
-
-        // --- NAVIGATION ---
-        function showTab(tabId) {
-            // Update Tabs
-            document.querySelectorAll('main').forEach(m => m.classList.add('hidden-tab'));
-            document.getElementById('tab-' + tabId).classList.remove('hidden-tab');
-
-            // Update Nav Icons
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById('nav-' + tabId).classList.add('active');
-
-            window.scrollTo(0, 0);
+        function changeTab(id) {
+            document.getElementById('tab-home').classList.toggle('tab-hidden', id !== 'home');
+            document.getElementById('tab-log').classList.toggle('tab-hidden', id !== 'log');
+            document.getElementById('nav-home').classList.toggle('nav-active', id === 'home');
+            document.getElementById('nav-log').classList.toggle('nav-active', id === 'log');
         }
     </script>
 </body>
