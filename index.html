@@ -114,17 +114,12 @@
             initChart();
             renderLogs();
             
-            // Interval Cepat untuk Jam & Heartbeat
             setInterval(() => {
                 const now = new Date();
                 document.getElementById('clock').innerText = now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-                
-                // Cek koneksi (5 detik tanpa data = offline untuk responsivitas tinggi)
                 if(Date.now() - lastBeat > 5000) setOnline(false);
             }, 1000);
 
-            // Pantau Firebase dengan Sinkronisasi Instan
-            // Menggunakan listener 'value' pada level monitoring untuk update tercepat
             db.ref('monitoring').on('value', snap => {
                 const d = snap.val();
                 if(!d) return;
@@ -132,7 +127,6 @@
                 lastBeat = Date.now();
                 setOnline(true);
                 
-                // Gunakan requestAnimationFrame untuk sinkronisasi rendering browser
                 if (!updatePending) {
                     updatePending = true;
                     requestAnimationFrame(() => {
@@ -149,9 +143,15 @@
             document.getElementById('state-txt').className = `text-[9px] font-black uppercase ${is ? 'text-emerald-400' : 'text-slate-400'}`;
         }
 
-        function updateDashboard(gsr, temp) {
+        function updateDashboard(rawGsr, rawTemp) {
+            // FILTER VALIDASI DATA (Mencegah lonjakan ribuan)
+            // 1023 biasanya nilai 'floating' ketika kabel terlepas
+            const gsr = (rawGsr >= 1020 || rawGsr <= 10) ? 1023 : rawGsr;
+            // Suhu ribuan biasanya error sensor LM35/DS18B20 jika kabel data putus
+            const temp = (rawTemp > 100 || rawTemp < 0) ? 0 : rawTemp;
+
             // Update Statistik Instan
-            document.getElementById('t-val').innerText = parseFloat(temp).toFixed(1);
+            document.getElementById('t-val').innerText = temp === 0 ? "--" : parseFloat(temp).toFixed(1);
             document.getElementById('g-raw').innerText = gsr;
 
             // Logika Level Stres
@@ -160,10 +160,11 @@
             let border = "border-transparent";
             let emo = "💡", tit = "Sistem Siap", desc = "Menunggu data...";
 
-            if(gsr > 696) {
+            // Status Disconnected jika nilai melonjak ke angka maksimal (error kabel)
+            if(gsr >= 1020) {
                 status = "DISCONNECTED";
                 color = "text-slate-500";
-                emo = "🔎"; tit = "Sensor Lepas"; desc = "GSR tidak mendeteksi jari Anda.";
+                emo = "🔎"; tit = "Sensor Lepas"; desc = "Kabel sensor tidak terhubung dengan benar.";
             } else if(gsr >= 500) {
                 status = "RELAXED";
                 color = "text-emerald-400";
@@ -188,13 +189,15 @@
                 document.getElementById('i-desc').innerText = desc;
             }
 
-            // Update Grafik (Tanpa Animasi & Mode Performa Tinggi)
-            myChart.data.datasets[0].data.push(gsr);
-            myChart.data.datasets[0].data.shift();
-            myChart.update('none'); 
+            // Update Grafik (Hanya update jika data masuk akal/bukan error kabel)
+            if(gsr < 1020) {
+                myChart.data.datasets[0].data.push(gsr);
+                myChart.data.datasets[0].data.shift();
+                myChart.update('none'); 
+            }
 
-            // Simpan Log jika status berubah
-            if(status !== lastStatus && status !== "DISCONNECTED") {
+            // Simpan Log jika status berubah dan data VALID
+            if(status !== lastStatus && status !== "DISCONNECTED" && temp > 0) {
                 saveLog(status, gsr, temp);
                 lastStatus = status;
             }
@@ -203,7 +206,7 @@
         function saveLog(st, g, t) {
             const time = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
             logs.unshift({ time, st, g, t });
-            if(logs.length > 50) logs.pop(); // Perbanyak batas log
+            if(logs.length > 50) logs.pop();
             localStorage.setItem('bp_logs', JSON.stringify(logs));
             renderLogs();
         }
@@ -241,13 +244,13 @@
             myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: Array(40).fill(''), // Perbanyak titik data untuk waveform lebih halus
+                    labels: Array(40).fill(''),
                     datasets: [{
                         data: Array(40).fill(null),
                         borderColor: '#38bdf8',
                         borderWidth: 1.5,
                         pointRadius: 0,
-                        tension: 0.4, // Lebih smooth
+                        tension: 0.4,
                         fill: true,
                         backgroundColor: 'rgba(56, 189, 248, 0.05)'
                     }]
@@ -258,7 +261,7 @@
                     animation: false, 
                     elements: { line: { capBezierPoints: false } },
                     scales: { 
-                        y: { display:false, min:200, max:1000 }, // Fokus pada range GSR aktif
+                        y: { display:false, min:200, max:1000 },
                         x: { display:false } 
                     },
                     plugins: { legend: { display:false } }
