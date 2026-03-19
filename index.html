@@ -134,17 +134,17 @@
                 const sTitle = document.getElementById('stressMobile');
                 const sTag = document.getElementById('statusTag');
 
-                if (gsr > 699) {
+                if (gsr > 696) {
                     currentStatus = "Jari Lepas";
                     sTitle.innerText = "No Signal";
                     sTag.className = "status-badge bg-slate-100 text-slate-500";
                     sTag.innerText = "Disconnected";
-                } else if (gsr >= 500) {
+                } else if (gsr > 450 && gsr < 696) {
                     currentStatus = "Normal";
                     sTitle.innerText = "Optimal";
                     sTag.className = "status-badge bg-emerald-100 text-emerald-600";
                     sTag.innerText = "Stable";
-                } else {
+                } else if (gsr < 450) {
                     currentStatus = "Stress";
                     sTitle.innerText = "High Stress";
                     sTag.className = "status-badge bg-red-100 text-red-600";
